@@ -1,0 +1,27 @@
+{
+  "name": "react-code-agent-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A minimal TypeScript ReAct code agent with local tools and OpenAI Responses API calls.",
+  "bin": {
+    "react-code-agent": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli/index.ts",
+    "agent": "tsx src/cli/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/cli/index.js",
+    "check": "npm run build"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "openai": "^6.45.0",
+    "undici": "^6.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3"
+  }
+}
