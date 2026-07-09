@@ -14,6 +14,23 @@ One-off task:
 npm run dev -- "your coding task"
 ```
 
+Web UI:
+
+```bash
+npm run web
+```
+
+Open `http://localhost:3100`. The browser entry lives at `src/web/index.html`, and the local server entry lives at `src/web/server.ts`.
+
+Desktop client:
+
+```bash
+npm run desktop
+```
+
+The desktop client uses Electron and reuses the `src/web` UI through an internal localhost server.
+If the Electron binary download fails during install, run `npm run electron:rebuild` after network access is restored. If the npm downloader hangs, run `npm run electron:install` to install the binary with curl/unzip.
+
 ## TypeScript Build
 
 ```bash

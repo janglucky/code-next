@@ -4,14 +4,22 @@
   "private": true,
   "type": "module",
   "description": "A minimal TypeScript ReAct code agent with local tools and OpenAI Responses API calls.",
+  "main": "./dist/desktop/main.js",
   "bin": {
     "react-code-agent": "./dist/cli/index.js"
   },
   "scripts": {
     "dev": "tsx src/cli/index.ts",
     "agent": "tsx src/cli/index.ts",
+    "web": "tsx src/web/server.ts",
+    "desktop": "npm run build && node scripts/run-desktop.mjs",
+    "electron:check": "node scripts/check-electron.mjs",
+    "electron:install": "node scripts/install-electron-binary.mjs",
+    "electron:rebuild": "node scripts/rebuild-electron.mjs",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/cli/index.js",
+    "start:web": "node dist/web/server.js",
+    "start:desktop": "node scripts/run-desktop.mjs",
     "check": "npm run build"
   },
   "dependencies": {
@@ -21,6 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "electron": "^33.4.11",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3"
   }

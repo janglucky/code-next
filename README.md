@@ -28,6 +28,23 @@ agent> /exit
 npm run dev -- "创建一个 hello.ts，并运行 TypeScript 编译检查"
 ```
 
+启动 Web UI：
+
+```bash
+npm run web
+```
+
+默认访问 `http://localhost:3100`。入口文件位于 `src/web/index.html`，服务入口位于 `src/web/server.ts`。
+
+启动桌面客户端：
+
+```bash
+npm run desktop
+```
+
+桌面端基于 Electron + TypeScript，入口位于 `src/desktop/main.ts`。它会复用 `src/web` 的界面和本地 Agent 服务。
+如果安装 Electron 二进制时网络失败，网络恢复后运行 `npm run electron:rebuild`，再执行 `npm run desktop`。如果 npm 下载器卡住，可以运行 `npm run electron:install` 使用 curl/unzip 从镜像安装。
+
 也可以构建后作为 CLI 运行：
 
 ```bash
@@ -122,6 +139,8 @@ npm run dev -- --env-file .env.local "查看当前目录并总结项目结构"
 ## 代码入口
 
 - `src/cli/index.ts`：CLI 参数、日志输出、启动入口
+- `src/desktop/`：Electron 桌面客户端入口
+- `src/web/`：ChatGPT 风格的本地 Web UI 和服务入口
 - `src/core/react-code-agent.ts`：ReAct 主循环、调度逻辑、API 调用、模型输出解析
 - `src/core/prompt.ts`：系统 prompt 与工具描述拼装
 - `src/core/types.ts`：Agent、工具、事件类型
@@ -137,7 +156,9 @@ npm run dev -- --env-file .env.local "查看当前目录并总结项目结构"
 │   ├── cli/              # CLI 入口层
 │   ├── config/           # Provider / BYOK 配置解析
 │   ├── core/             # Agent 核心调度层
-│   └── tools/            # 工具适配层
+│   ├── desktop/          # Electron 桌面客户端
+│   ├── tools/            # 工具适配层
+│   └── web/              # 本地 Web UI 入口
 ├── package.json          # npm 脚本和 CLI bin 配置
 └── tsconfig.json         # TypeScript 构建配置
 ```

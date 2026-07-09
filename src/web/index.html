@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Code Agent</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="侧边栏">
+        <div class="sidebar-head">
+          <button class="icon-button brand-mark" type="button" aria-label="Code Agent">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3.75 19.14 7.88v8.24L12 20.25l-7.14-4.13V7.88L12 3.75Z" />
+              <path d="m8.95 10.35 3.05-1.76 3.05 1.76v3.3L12 15.41l-3.05-1.76v-3.3Z" />
+            </svg>
+          </button>
+          <button id="sidebarToggle" class="icon-button" type="button" aria-label="收起侧边栏" title="收起侧边栏">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+        </div>
+
+        <nav class="nav-list" aria-label="主导航">
+          <button id="newChat" class="nav-item active" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            <span>新任务</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m21 21-4.35-4.35" />
+              <circle cx="11" cy="11" r="6" />
+            </svg>
+            <span>搜索任务</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h3l2 2.25h6A2.5 2.5 0 0 1 20 9.75v6.75A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
+            </svg>
+            <span>工作区</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 7h10M9 12h10M9 17h10" />
+              <path d="M5 7h.01M5 12h.01M5 17h.01" />
+            </svg>
+            <span>工具</span>
+          </button>
+          <button class="nav-item" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v7l4 2" />
+              <circle cx="12" cy="12" r="8" />
+            </svg>
+            <span>运行记录</span>
+          </button>
+        </nav>
+
+        <section class="history" aria-label="历史任务">
+          <p class="history-label">今天</p>
+          <button class="history-item" type="button">检查当前项目结构</button>
+          <button class="history-item" type="button">给 Agent 添加 Web UI</button>
+        </section>
+
+        <div class="sidebar-bottom">
+          <button class="nav-item subtle" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v18M4 8h16M4 16h16" />
+            </svg>
+            <span>查看配置</span>
+          </button>
+          <button class="nav-item subtle" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05A1.7 1.7 0 0 0 15 19.37a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.63 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.88l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.88-.34l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.37 9c.2.61.78 1 1.43 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.52 1Z" />
+            </svg>
+            <span>设置</span>
+          </button>
+          <button class="nav-item subtle" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M9.4 9a2.7 2.7 0 0 1 5.2 1c0 2-2.6 2.15-2.6 4" />
+              <path d="M12 17h.01" />
+            </svg>
+            <span>帮助</span>
+          </button>
+
+          <section class="config-box" aria-label="运行状态">
+            <strong id="configTitle">本地 Agent</strong>
+            <p id="configSummary">正在读取配置</p>
+            <button id="refreshStatus" class="ghost-button" type="button">刷新状态</button>
+          </section>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="mobileMenu" class="icon-button mobile-only" type="button" aria-label="打开侧边栏">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+            <button class="model-button" type="button">
+              <span>Code Agent</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m7 10 5 5 5-5" />
+              </svg>
+            </button>
+          </div>
+          <div class="topbar-actions">
+            <span id="statusPill" class="status-pill">连接中</span>
+            <button class="secondary-button" type="button">设置</button>
+            <button class="primary-button" type="button">本地运行</button>
+          </div>
+        </header>
+
+        <section id="chatSurface" class="chat-surface empty">
+          <div id="messages" class="messages" aria-live="polite"></div>
+
+          <div id="emptyState" class="empty-state">
+            <h1>今天想让 Agent 做什么？</h1>
+          </div>
+
+          <form id="composer" class="composer" autocomplete="off">
+            <div class="composer-shell">
+              <button class="tool-button" type="button" aria-label="添加上下文" title="添加上下文">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              <textarea id="promptInput" rows="1" placeholder="有问题，尽管问"></textarea>
+              <button class="tool-button" type="button" aria-label="语音输入" title="语音输入">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 4a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V7a3 3 0 0 0-3-3Z" />
+                  <path d="M19 11a7 7 0 0 1-14 0M12 18v3" />
+                </svg>
+              </button>
+              <button id="sendButton" class="send-button" type="submit" aria-label="发送" title="发送">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </button>
+            </div>
+            <div class="quick-actions" aria-label="快捷任务">
+              <button type="button">总结项目结构</button>
+              <button type="button">检查构建问题</button>
+              <button type="button">补充 README</button>
+            </div>
+          </form>
+        </section>
+
+        <footer class="disclaimer">Code Agent 会在当前工作区运行工具。请在提交前检查生成的代码和命令结果。</footer>
+      </main>
+    </div>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
