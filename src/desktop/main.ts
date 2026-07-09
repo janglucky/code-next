@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type OpenDialogOptions } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { startWebServer, type StartedWebServer } from "../web/server.js";
@@ -70,6 +70,24 @@ function createMenu() {
   );
 }
 
+function registerIpcHandlers() {
+  ipcMain.handle("code-agent:select-directory", async (event, initialPath?: unknown) => {
+    const owner = BrowserWindow.fromWebContents(event.sender) ?? mainWindow ?? undefined;
+    const options: OpenDialogOptions = {
+      title: "选择工作空间目录",
+      defaultPath: typeof initialPath === "string" && initialPath.trim() ? initialPath.trim() : undefined,
+      properties: ["openDirectory", "createDirectory"],
+    };
+    const result = owner ? await dialog.showOpenDialog(owner, options) : await dialog.showOpenDialog(options);
+
+    if (result.canceled) {
+      return null;
+    }
+
+    return result.filePaths[0] ?? null;
+  });
+}
+
 async function createMainWindow() {
   if (!webServer) {
     webServer = await startWebServer({
@@ -121,6 +139,7 @@ async function stopWebServer() {
 app.setName("Code Agent");
 
 async function boot() {
+  registerIpcHandlers();
   createMenu();
   await createMainWindow();
 

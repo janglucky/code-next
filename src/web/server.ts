@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
+import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { createOpenAIClient, resolveProviderConfig, type ProviderInput } from "../config/provider.js";
 import { loadEnvFile } from "../config/env.js";
 import { ReactCodeAgent } from "../core/react-code-agent.js";
@@ -14,11 +16,25 @@ import { createDefaultTools } from "../tools/workspace-tools.js";
 type RunRequest = ProviderInput & {
   task?: unknown;
   maxSteps?: unknown;
+  workspaceRoot?: unknown;
+};
+
+type WebSettings = {
+  workspaceRoot: string;
+  workspaceRootConfigured: boolean;
+};
+
+type WebState = {
+  conversations: unknown[];
+  settings: WebSettings;
 };
 
 const DEFAULT_PORT = 3100;
-const MAX_BODY_BYTES = 64 * 1024;
+const MAX_BODY_BYTES = 5 * 1024 * 1024;
 const STATIC_ROOT = path.resolve(process.cwd(), "src/web");
+const STATE_DIR = path.resolve(process.cwd(), ".code-agent");
+const STATE_FILE = path.join(STATE_DIR, "state.json");
+const execFileAsync = promisify(execFile);
 
 export type WebServerStartOptions = {
   host?: string;
@@ -41,6 +57,181 @@ function readMaxSteps(value?: unknown): number {
 function readPort(): number {
   const parsed = Number(process.env.WEB_PORT ?? process.env.PORT);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_PORT;
+}
+
+function isLocalRequest(req: IncomingMessage): boolean {
+  const address = req.socket.remoteAddress;
+  return !address || address === "::1" || address === "127.0.0.1" || address === "::ffff:127.0.0.1";
+}
+
+function defaultState(): WebState {
+  return {
+    conversations: [],
+    settings: {
+      workspaceRoot: process.cwd(),
+      workspaceRootConfigured: false,
+    },
+  };
+}
+
+function normalizeState(value: unknown): WebState {
+  const fallback = defaultState();
+
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return fallback;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const settings = typeof candidate.settings === "object" && candidate.settings !== null ? candidate.settings : {};
+  const workspaceRootConfigured = (settings as Record<string, unknown>).workspaceRootConfigured === true;
+  const workspaceRoot =
+    workspaceRootConfigured &&
+    typeof (settings as Record<string, unknown>).workspaceRoot === "string" &&
+    ((settings as Record<string, unknown>).workspaceRoot as string).trim()
+      ? path.resolve(process.cwd(), ((settings as Record<string, unknown>).workspaceRoot as string).trim())
+      : fallback.settings.workspaceRoot;
+
+  return {
+    conversations: Array.isArray(candidate.conversations) ? candidate.conversations : [],
+    settings: {
+      workspaceRoot,
+      workspaceRootConfigured,
+    },
+  };
+}
+
+async function readState(): Promise<WebState> {
+  try {
+    const content = await fs.readFile(STATE_FILE, "utf8");
+    return normalizeState(JSON.parse(content) as unknown);
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+
+    if (code === "ENOENT") {
+      return defaultState();
+    }
+
+    throw error;
+  }
+}
+
+async function writeState(state: WebState): Promise<void> {
+  await fs.mkdir(STATE_DIR, { recursive: true });
+  await fs.writeFile(STATE_FILE, `${JSON.stringify(normalizeState(state), null, 2)}\n`, "utf8");
+}
+
+async function resolveWorkspaceRoot(input: unknown): Promise<string> {
+  if (typeof input !== "string" || input.trim().length === 0) {
+    throw new Error("Workspace path is required.");
+  }
+
+  const workspaceRoot = path.resolve(process.cwd(), input.trim());
+  const stat = await fs.stat(workspaceRoot);
+
+  if (!stat.isDirectory()) {
+    throw new Error(`Workspace path is not a directory: ${workspaceRoot}`);
+  }
+
+  return workspaceRoot;
+}
+
+async function resolveInitialDirectory(input: unknown): Promise<string> {
+  if (typeof input !== "string" || !input.trim()) {
+    return process.cwd();
+  }
+
+  const resolved = path.resolve(process.cwd(), input.trim());
+
+  try {
+    const stat = await fs.stat(resolved);
+    return stat.isDirectory() ? resolved : path.dirname(resolved);
+  } catch {
+    return process.cwd();
+  }
+}
+
+async function commandExists(command: string): Promise<boolean> {
+  const lookup = process.platform === "win32" ? "where" : "which";
+
+  try {
+    await execFileAsync(lookup, [command]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function runDirectoryPicker(command: string, args: string[]): Promise<string | null> {
+  try {
+    const { stdout } = await execFileAsync(command, args, {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    const selectedPath = stdout.trim();
+    return selectedPath ? path.resolve(selectedPath) : null;
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? Number(error.code) : 1;
+    const stderr = error && typeof error === "object" && "stderr" in error ? String(error.stderr ?? "").trim() : "";
+
+    if (code === 1 && !stderr) {
+      return null;
+    }
+
+    throw new Error(stderr || formatError(error));
+  }
+}
+
+function escapeAppleScriptString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function escapePowerShellString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+async function selectDirectoryWithSystemDialog(initialPath: string): Promise<string | null> {
+  if (process.platform === "darwin") {
+    const escapedPath = escapeAppleScriptString(initialPath);
+    const script = `POSIX path of (choose folder with prompt "选择工作空间目录" default location POSIX file "${escapedPath}")`;
+    return await runDirectoryPicker("osascript", ["-e", script]);
+  }
+
+  if (process.platform === "win32") {
+    const escapedPath = escapePowerShellString(initialPath);
+    const script = [
+      "Add-Type -AssemblyName System.Windows.Forms",
+      "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8",
+      "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog",
+      "$dialog.Description = '选择工作空间目录'",
+      `$dialog.SelectedPath = '${escapedPath}'`,
+      "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $dialog.SelectedPath }",
+    ].join("; ");
+    return await runDirectoryPicker("powershell.exe", ["-NoProfile", "-STA", "-Command", script]);
+  }
+
+  const initialWithSeparator = initialPath.endsWith(path.sep) ? initialPath : `${initialPath}${path.sep}`;
+  const candidates: Array<{ command: string; args: string[] }> = [
+    {
+      command: "zenity",
+      args: ["--file-selection", "--directory", "--title=选择工作空间目录", `--filename=${initialWithSeparator}`],
+    },
+    {
+      command: "kdialog",
+      args: ["--getexistingdirectory", initialPath, "选择工作空间目录"],
+    },
+    {
+      command: "yad",
+      args: ["--file-selection", "--directory", "--title=选择工作空间目录", `--filename=${initialWithSeparator}`],
+    },
+  ];
+
+  for (const candidate of candidates) {
+    if (await commandExists(candidate.command)) {
+      return await runDirectoryPicker(candidate.command, candidate.args);
+    }
+  }
+
+  throw new Error("当前系统未找到可用的目录选择器。Linux 请安装 zenity、kdialog 或 yad，或手动输入目录路径。");
 }
 
 function formatError(error: unknown): string {
@@ -86,7 +277,7 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
-async function readJsonBody(req: IncomingMessage): Promise<RunRequest> {
+async function readJsonBody(req: IncomingMessage): Promise<JsonObject> {
   const raw = await readBody(req);
 
   if (!raw.trim()) {
@@ -99,7 +290,7 @@ async function readJsonBody(req: IncomingMessage): Promise<RunRequest> {
     throw new Error("Request body must be a JSON object.");
   }
 
-  return parsed as RunRequest;
+  return parsed as JsonObject;
 }
 
 function buildProviderInput(body: RunRequest): ProviderInput {
@@ -139,7 +330,7 @@ async function handleRun(req: IncomingMessage, res: ServerResponse) {
   let body: RunRequest;
 
   try {
-    body = await readJsonBody(req);
+    body = (await readJsonBody(req)) as RunRequest;
   } catch (error) {
     sendJson(res, 400, { ok: false, error: formatError(error) });
     return;
@@ -153,6 +344,11 @@ async function handleRun(req: IncomingMessage, res: ServerResponse) {
   }
 
   try {
+    const state = await readState();
+    const requestedWorkspaceRoot =
+      typeof body.workspaceRoot === "string" && body.workspaceRoot.trim() ? body.workspaceRoot : state.settings.workspaceRoot;
+    const workspaceRoot = await resolveWorkspaceRoot(requestedWorkspaceRoot);
+    let currentWorkspaceRoot = workspaceRoot;
     const providerConfig = resolveProviderConfig(buildProviderInput(body), process.env);
     const maxSteps = readMaxSteps(body.maxSteps);
     let closed = false;
@@ -174,7 +370,8 @@ async function handleRun(req: IncomingMessage, res: ServerResponse) {
       apiMode: providerConfig.apiMode,
       model: providerConfig.model,
       maxSteps,
-      workspace: process.cwd(),
+      workspace: path.basename(workspaceRoot),
+      workspaceRoot,
     });
 
     const agent = new ReactCodeAgent({
@@ -183,10 +380,20 @@ async function handleRun(req: IncomingMessage, res: ServerResponse) {
       model: providerConfig.model,
       maxSteps,
       reasoningEffort: providerConfig.reasoningEffort,
-      tools: createDefaultTools(process.cwd()),
+      tools: createDefaultTools(workspaceRoot, {
+        onWorkspaceRootChange(nextWorkspaceRoot) {
+          currentWorkspaceRoot = nextWorkspaceRoot;
+        },
+      }),
       onStep(event) {
         if (!closed) {
-          writeEvent(res, serializeStep(event));
+          const payload = serializeStep(event);
+
+          if (event.type === "tool" && event.tool === "change_workdir" && event.result.ok) {
+            payload.workspaceRoot = currentWorkspaceRoot;
+          }
+
+          writeEvent(res, payload);
         }
       },
     });
@@ -271,8 +478,97 @@ async function handleStatic(req: IncomingMessage, res: ServerResponse, urlPath: 
   }
 }
 
-function handleStatus(res: ServerResponse) {
+async function handleState(res: ServerResponse) {
   try {
+    const state = await readState();
+
+    sendJson(res, 200, {
+      ok: true,
+      conversations: state.conversations,
+      settings: state.settings,
+      defaults: {
+        workspaceRoot: process.cwd(),
+      },
+      stateFile: STATE_FILE,
+    });
+  } catch (error) {
+    sendJson(res, 500, { ok: false, error: formatError(error) });
+  }
+}
+
+async function handleSaveConversations(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const body = await readJsonBody(req);
+    const conversations = Array.isArray(body.conversations) ? body.conversations : null;
+
+    if (!conversations) {
+      sendJson(res, 400, { ok: false, error: "conversations must be an array." });
+      return;
+    }
+
+    const state = await readState();
+    state.conversations = conversations.slice(0, 80);
+    await writeState(state);
+    sendJson(res, 200, { ok: true, conversations: state.conversations });
+  } catch (error) {
+    sendJson(res, 500, { ok: false, error: formatError(error) });
+  }
+}
+
+async function handleSaveSettings(req: IncomingMessage, res: ServerResponse) {
+  try {
+    const body = await readJsonBody(req);
+    const workspaceRoot = await resolveWorkspaceRoot(body.workspaceRoot);
+    const state = await readState();
+
+    state.settings.workspaceRoot = workspaceRoot;
+    state.settings.workspaceRootConfigured = true;
+    await writeState(state);
+
+    sendJson(res, 200, {
+      ok: true,
+      settings: state.settings,
+      workspace: {
+        name: path.basename(workspaceRoot),
+        root: workspaceRoot,
+      },
+    });
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: formatError(error) });
+  }
+}
+
+async function handleSelectDirectory(req: IncomingMessage, res: ServerResponse) {
+  if (!isLocalRequest(req)) {
+    sendJson(res, 403, { ok: false, error: "Directory picker is only available from localhost." });
+    return;
+  }
+
+  try {
+    const body = await readJsonBody(req);
+    const initialPath = await resolveInitialDirectory(body.initialPath);
+    const selectedPath = await selectDirectoryWithSystemDialog(initialPath);
+
+    if (!selectedPath) {
+      sendJson(res, 200, { ok: true, canceled: true });
+      return;
+    }
+
+    const workspaceRoot = await resolveWorkspaceRoot(selectedPath);
+    sendJson(res, 200, {
+      ok: true,
+      canceled: false,
+      path: workspaceRoot,
+    });
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: formatError(error) });
+  }
+}
+
+async function handleStatus(res: ServerResponse) {
+  try {
+    const state = await readState();
+    const workspaceRoot = await resolveWorkspaceRoot(state.settings.workspaceRoot);
     const providerConfig = resolveProviderConfig({}, process.env);
 
     sendJson(res, 200, {
@@ -282,7 +578,8 @@ function handleStatus(res: ServerResponse) {
       model: providerConfig.model,
       proxy: providerConfig.proxySource,
       maxSteps: readMaxSteps(),
-      workspace: path.basename(process.cwd()),
+      workspace: path.basename(workspaceRoot),
+      workspaceRoot,
     });
   } catch (error) {
     sendJson(res, 200, {
@@ -298,7 +595,27 @@ export function createApp() {
       const url = new URL(req.url ?? "/", "http://localhost");
 
       if (req.method === "GET" && url.pathname === "/api/status") {
-        handleStatus(res);
+        await handleStatus(res);
+        return;
+      }
+
+      if (req.method === "GET" && url.pathname === "/api/state") {
+        await handleState(res);
+        return;
+      }
+
+      if (req.method === "PUT" && url.pathname === "/api/conversations") {
+        await handleSaveConversations(req, res);
+        return;
+      }
+
+      if (req.method === "PUT" && url.pathname === "/api/settings") {
+        await handleSaveSettings(req, res);
+        return;
+      }
+
+      if (req.method === "POST" && url.pathname === "/api/select-directory") {
+        await handleSelectDirectory(req, res);
         return;
       }
 

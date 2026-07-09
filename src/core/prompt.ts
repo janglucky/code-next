@@ -25,6 +25,7 @@ Rules:
 - Inspect files before editing them unless you are creating a new file.
 - Keep edits small and directly related to the user task.
 - Use relative paths inside the workspace.
+- Use change_workdir when you need to switch to another workspace directory; its path may be absolute or relative.
 - Prefer running a focused validation command after code changes.
 - If a tool fails, use the observation to recover.
 - The "thought" field must be a short, public rationale, not hidden chain-of-thought.

@@ -40,12 +40,6 @@
           </button>
           <button class="nav-item" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7.5A2.5 2.5 0 0 1 6.5 5h3l2 2.25h6A2.5 2.5 0 0 1 20 9.75v6.75A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z" />
-            </svg>
-            <span>工作区</span>
-          </button>
-          <button class="nav-item" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M9 7h10M9 12h10M9 17h10" />
               <path d="M5 7h.01M5 12h.01M5 17h.01" />
             </svg>
@@ -61,19 +55,18 @@
         </nav>
 
         <section class="history" aria-label="历史任务">
-          <p class="history-label">今天</p>
-          <button class="history-item" type="button">检查当前项目结构</button>
-          <button class="history-item" type="button">给 Agent 添加 Web UI</button>
+          <p class="history-label">历史任务</p>
+          <div id="historyList" class="history-list"></div>
         </section>
 
         <div class="sidebar-bottom">
-          <button class="nav-item subtle" type="button">
+          <button id="sidebarConfig" class="nav-item subtle" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3v18M4 8h16M4 16h16" />
             </svg>
             <span>查看配置</span>
           </button>
-          <button class="nav-item subtle" type="button">
+          <button id="sidebarSettings" class="nav-item subtle" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
               <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05A1.7 1.7 0 0 0 15 19.37a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.08a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.88.34l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.63 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.08a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.88l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.08a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.88-.34l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.37 9c.2.61.78 1 1.43 1H21a2 2 0 1 1 0 4h-.08a1.7 1.7 0 0 0-1.52 1Z" />
@@ -100,6 +93,12 @@
       <main class="workspace">
         <header class="topbar">
           <div class="topbar-left">
+            <button id="desktopSidebarOpen" class="icon-button sidebar-restore" type="button" aria-label="展开侧边栏" title="展开侧边栏">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z" />
+                <path d="M9 4v16" />
+              </svg>
+            </button>
             <button id="mobileMenu" class="icon-button mobile-only" type="button" aria-label="打开侧边栏">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 7h16M4 12h16M4 17h16" />
@@ -114,7 +113,7 @@
           </div>
           <div class="topbar-actions">
             <span id="statusPill" class="status-pill">连接中</span>
-            <button class="secondary-button" type="button">设置</button>
+            <button id="topbarSettings" class="secondary-button" type="button">设置</button>
             <button class="primary-button" type="button">本地运行</button>
           </div>
         </header>
@@ -155,8 +154,184 @@
           </form>
         </section>
 
+        <section id="settingsSurface" class="settings-surface" hidden>
+          <aside class="settings-sidebar" aria-label="设置分类">
+            <button class="settings-tab active" type="button" data-settings-tab="general">常规</button>
+            <button class="settings-tab" type="button" data-settings-tab="appearance">外观</button>
+            <button class="settings-tab" type="button" data-settings-tab="config">配置</button>
+            <button class="settings-tab" type="button" data-settings-tab="personalization">个性化</button>
+            <button class="settings-tab" type="button" data-settings-tab="shortcuts">键盘快捷键</button>
+            <button class="settings-tab" type="button" data-settings-tab="mcp">MCP服务器</button>
+            <button class="settings-tab" type="button" data-settings-tab="skills">SKILL</button>
+            <button class="settings-tab" type="button" data-settings-tab="tools">工具</button>
+          </aside>
+
+          <div class="settings-detail">
+            <header class="settings-page-head">
+              <h1 id="settingsPageTitle">常规</h1>
+              <button id="settingsBack" class="secondary-button" type="button">返回对话</button>
+            </header>
+
+            <section class="settings-panel active" data-settings-panel="general">
+              <form id="settingsForm" class="settings-form">
+                <div class="settings-group">
+                  <h2>工作空间</h2>
+                  <label class="field">
+                    <span>工作空间目录</span>
+                    <div class="input-with-action">
+                      <input id="workspaceInput" type="text" spellcheck="false" />
+                      <button id="workspaceBrowse" class="folder-picker-button" type="button" aria-label="选择工作空间目录" title="选择本地目录">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" />
+                          <path d="M3 10h18" />
+                        </svg>
+                      </button>
+                    </div>
+                  </label>
+                  <p id="workspaceHint" class="field-hint">Agent 的文件扫描、读写和命令执行都会从此目录开始。</p>
+                  <p id="settingsError" class="settings-error" role="alert"></p>
+                  <div class="settings-actions">
+                    <button id="settingsReset" class="secondary-button" type="button">恢复默认</button>
+                    <button class="primary-button" type="submit">保存</button>
+                  </div>
+                </div>
+
+                <div class="settings-group">
+                  <h2>会话</h2>
+                  <div class="setting-row">
+                    <span>历史保存位置</span>
+                    <strong id="stateFileValue">正在读取</strong>
+                  </div>
+                  <div class="setting-row">
+                    <span>历史数量上限</span>
+                    <strong>80</strong>
+                  </div>
+                </div>
+              </form>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="appearance">
+              <div class="settings-group">
+                <h2>主题</h2>
+                <label class="field">
+                  <span>颜色模式</span>
+                  <select>
+                    <option>浅色</option>
+                    <option>跟随系统</option>
+                  </select>
+                </label>
+              </div>
+              <div class="settings-group">
+                <h2>密度</h2>
+                <div class="setting-row">
+                  <span>界面密度</span>
+                  <strong>标准</strong>
+                </div>
+                <div class="setting-row">
+                  <span>代码字体</span>
+                  <strong>系统等宽字体</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="config">
+              <div class="settings-group">
+                <h2>运行配置</h2>
+                <div id="settingsConfigDetails" class="config-details"></div>
+              </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="personalization">
+              <div class="settings-group">
+                <h2>回复偏好</h2>
+                <label class="field">
+                  <span>默认语言</span>
+                  <select>
+                    <option>中文</option>
+                    <option>英文</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>默认风格</span>
+                  <select>
+                    <option>简洁</option>
+                    <option>详细</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="shortcuts">
+              <div class="settings-group">
+                <h2>快捷键</h2>
+                <div class="shortcut-row"><span>发送消息</span><strong>Enter</strong></div>
+                <div class="shortcut-row"><span>换行</span><strong>Shift + Enter</strong></div>
+                <div class="shortcut-row"><span>关闭面板</span><strong>Esc</strong></div>
+              </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="mcp">
+              <div class="settings-group">
+                <h2>MCP服务器</h2>
+                <div class="setting-row">
+                  <span>已连接服务器</span>
+                  <strong>0</strong>
+                </div>
+                <div class="setting-row">
+                  <span>配置来源</span>
+                  <strong>未配置</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="skills">
+              <div class="settings-group">
+                <h2>SKILL</h2>
+                <div class="setting-row">
+                  <span>已加载技能</span>
+                  <strong>系统默认</strong>
+                </div>
+                <div class="setting-row">
+                  <span>技能目录</span>
+                  <strong>CODEX_HOME/skills</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="settings-panel" data-settings-panel="tools">
+              <div class="settings-group">
+                <h2>工具</h2>
+                <div class="setting-row"><span>change_workdir</span><strong>启用</strong></div>
+                <div class="setting-row"><span>list_files</span><strong>启用</strong></div>
+                <div class="setting-row"><span>read_file</span><strong>启用</strong></div>
+                <div class="setting-row"><span>write_file</span><strong>启用</strong></div>
+                <div class="setting-row"><span>run_command</span><strong>启用</strong></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <footer class="disclaimer">Code Agent 会在当前工作区运行工具。请在提交前检查生成的代码和命令结果。</footer>
       </main>
+    </div>
+
+    <div id="configDialog" class="modal-backdrop" hidden>
+      <section class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="configTitleDialog">
+        <header class="settings-head">
+          <h2 id="configTitleDialog">当前配置</h2>
+          <button id="configClose" class="icon-button" type="button" aria-label="关闭配置">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+
+        <div id="configDetails" class="config-details"></div>
+
+        <div class="settings-actions">
+          <button id="configRefresh" class="secondary-button" type="button">刷新</button>
+        </div>
+      </section>
     </div>
 
     <script src="./app.js" type="module"></script>

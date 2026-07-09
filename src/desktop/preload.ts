@@ -1,4 +1,4 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("codeAgentDesktop", {
   platform: process.platform,
@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld("codeAgentDesktop", {
     electron: process.versions.electron,
     node: process.versions.node,
   },
+  selectDirectory: (initialPath?: string) => ipcRenderer.invoke("code-agent:select-directory", initialPath) as Promise<string | null>,
 });

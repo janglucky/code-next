@@ -4,7 +4,7 @@
 
 - ReAct 循环：`Thought -> Action -> Observation -> Final`
 - 系统 prompt：约束模型每次只输出一个 JSON 决策
-- 工具层：列文件、读文件、写文件、运行命令
+- 工具层：切换工作目录、列文件、读文件、写文件、运行命令
 - OpenAI Responses API 调用逻辑
 
 ## 运行

@@ -3,8 +3,12 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import type { JsonObject, ToolDefinition, ToolResult } from "../core/types.js";
 
-const DEFAULT_EXCLUDES = new Set([".git", "node_modules", "dist"]);
+const DEFAULT_EXCLUDES = new Set([".code-agent", ".git", "node_modules", "dist"]);
 const MAX_TOOL_OUTPUT_CHARS = 12_000;
+
+export type WorkspaceToolsOptions = {
+  onWorkspaceRootChange?: (workspaceRoot: string) => Promise<void> | void;
+};
 
 function asString(value: unknown, name: string): string {
   if (typeof value !== "string" || value.length === 0) {
@@ -22,6 +26,17 @@ function asText(value: unknown, name: string): string {
 
 function asNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+async function resolveExistingDirectory(workspaceRoot: string, inputPath: string): Promise<string> {
+  const resolved = path.isAbsolute(inputPath) ? path.resolve(inputPath) : path.resolve(workspaceRoot, inputPath);
+  const stat = await fs.stat(resolved);
+
+  if (!stat.isDirectory()) {
+    throw new Error(`Path is not a directory: ${inputPath}`);
+  }
+
+  return resolved;
 }
 
 function resolveWorkspacePath(workspaceRoot: string, inputPath: string): string {
@@ -135,8 +150,32 @@ function runProcess(command: string, args: string[], cwd: string, timeoutMs: num
   });
 }
 
-export function createDefaultTools(workspaceRoot: string): ToolDefinition[] {
+export function createDefaultTools(initialWorkspaceRoot: string, options: WorkspaceToolsOptions = {}): ToolDefinition[] {
+  let workspaceRoot = path.resolve(initialWorkspaceRoot);
+
   return [
+    {
+      name: "change_workdir",
+      description:
+        "Switch the current workspace directory. Later file and command tools run from this directory. The path may be absolute or relative to the current workspace.",
+      inputSchema: {
+        type: "object",
+        required: ["path"],
+        properties: {
+          path: { type: "string" },
+        },
+      },
+      async run(input: JsonObject) {
+        try {
+          const nextWorkspaceRoot = await resolveExistingDirectory(workspaceRoot, asString(input.path, "path"));
+          workspaceRoot = nextWorkspaceRoot;
+          await options.onWorkspaceRootChange?.(workspaceRoot);
+          return ok(`Workspace changed to ${workspaceRoot}`);
+        } catch (error) {
+          return fail(error);
+        }
+      },
+    },
     {
       name: "list_files",
       description: "List files and directories under a workspace-relative directory.",
